@@ -1,11 +1,36 @@
 --[[
 	Dex++
 	Version 3.0
-	
+
 	Developed by Chillz
-	
+
 	Dex++ is a revival of Moon's Dex, made to fulfill Moon's Dex prophecy.
 ]]
+
+-- =========================
+-- Secure namespace (replaces _G)
+-- =========================
+local G = (type(getgenv) == "function" and getgenv()) or _G
+G.PAUKCore = G.PAUKCore or {}
+local PAUKCore = G.PAUKCore
+PAUKCore.Internal = PAUKCore.Internal or {}
+local internal = PAUKCore.Internal
+
+-- =========================
+-- Helper for temporary context elevation (setthreadidentity/setthreadcontext)
+-- =========================
+local function withSystemContext(fn)
+    local prevId, prevCtx
+    pcall(function() prevId = getthreadidentity() end)
+    pcall(function() prevCtx = getthreadcontext() end)
+    pcall(function() setthreadidentity(8) end)
+    pcall(function() setthreadcontext(6) end)
+    local ok, res = pcall(fn)
+    if prevId then pcall(function() setthreadidentity(prevId) end) end
+    if prevCtx then pcall(function() setthreadcontext(prevCtx) end) end
+    if not ok then error(res) end
+    return res
+end
 
 local selection
 local nodes = {}
@@ -11132,7 +11157,7 @@ end
 
 -- TODO: Remove when open source
 if gethsfuncs then
-	_G.moduleData = {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
+	PAUKCore.moduleData = {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
 else
 	return {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
 end
@@ -13047,7 +13072,7 @@ end
 
 -- TODO: Remove when open source
 if gethsfuncs then
-	_G.moduleData = {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
+	PAUKCore.moduleData = {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
 else
 	return {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
 end
@@ -13349,7 +13374,7 @@ end
 
 -- TODO: Remove when open source
 if gethsfuncs then
-	_G.moduleData = {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
+	PAUKCore.moduleData = {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
 else
 	return {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
 end
@@ -13658,7 +13683,7 @@ end
 
 -- TODO: Remove when open source
 if gethsfuncs then
-	_G.moduleData = {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
+	PAUKCore.moduleData = {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
 else
 	return {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
 end
@@ -14079,7 +14104,7 @@ end
 
 -- TODO: Remove when open source
 if gethsfuncs then
-	_G.moduleData = {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
+	PAUKCore.moduleData = {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
 else
 	return {InitDeps = initDeps, InitAfterMain = initAfterMain, Main = main}
 end
@@ -14425,7 +14450,7 @@ Main = (function()
 
 				-- TODO: Remove when open source
 				if gethsfuncs then
-					control = _G.moduleData
+					control = PAUKCore.moduleData
 				end
 
 				if not control then Main.Error("Missing Embedded Module: "..name) end
@@ -15766,5 +15791,35 @@ end)()
 
 -- Start
 Main.Init()
+
+-- =========================
+-- Protection of critical functions via newcclosure (after initialization)
+-- =========================
+if type(newcclosure) == "function" then
+	Main.Uninit = newcclosure(Main.Uninit)
+	Main.Reinit = newcclosure(Main.Reinit)
+	Main.LoadModule = newcclosure(Main.LoadModule)
+	Main.LoadModules = newcclosure(Main.LoadModules)
+	Main.FetchAPI = newcclosure(Main.FetchAPI)
+	Main.FetchRMD = newcclosure(Main.FetchRMD)
+	Main.CreateApp = newcclosure(Main.CreateApp)
+	Main.SetMainGuiOpen = newcclosure(Main.SetMainGuiOpen)
+	Main.CreateMainGui = newcclosure(Main.CreateMainGui)
+	Main.SetupFilesystem = newcclosure(Main.SetupFilesystem)
+	Main.SaveCurrentSettings = newcclosure(Main.SaveCurrentSettings)
+	Main.LocalDepsUpToDate = newcclosure(Main.LocalDepsUpToDate)
+	Main.ExportSettings = newcclosure(Main.ExportSettings)
+	Main.LoadSettings = newcclosure(Main.LoadSettings)
+	Main.ResetSettings = newcclosure(Main.ResetSettings)
+end
+
+-- =========================
+-- Lock internal table from modification (after initialization)
+-- =========================
+if type(setreadonly) == "function" then
+	pcall(function() setreadonly(internal, true) end)
+elseif type(make_readonly) == "function" then
+	pcall(function() make_readonly(internal) end)
+end
 
 --for i,v in pairs(Main.MissingEnv) do print(i,v) end
